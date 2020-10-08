@@ -1,0 +1,88 @@
+Instalação do Zabbix 4.4 no Debian 10
+Instalação do Zabbix 4.4 no Debian 10
+
+Versões do Debian: Debian 10.0 Buster
+Arquitetura: x86_64
+Imagem do Debian: https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/
+
+Instalar repositório do Zabbix com o seguinte comando:
+# wget https://repo.zabbix.com/zabbix/4.4/debian/pool/main/z/zabbix-release/zabbix-release_4.4-1+buster_all.deb
+# dpkg -i zabbix-release_4.4-1+buster_all.deb
+# apt update
+
+Em seguida, instalamos os pacotes do Zabbix Server, frontend, agent get e sender.
+# apt -y install zabbix-server-mysql zabbix-frontend-php zabbix-apache-conf zabbix-agent
+
+Esse comando já irá instalar as dependências, tais como: MariaDB, PHP, Apache etc.
+
+Criar a base de dados do Zabbix
+# mysql -uroot Tecle ENTER. Por padrão, o acesso do root é feito via unix_socket.
+1.	MariaDB [(none)]> create database zabbix character set utf8 collate utf8_bin;
+2.	MariaDB [(none)]> grant all privileges on zabbix.* to zabbix@localhost identified by 'zabbix_pw';
+3.	MariaDB [(none)]> quit
+Explicação dos comandos:
+•	create -> cria a base de dados com o nome zabbix.
+•	grant all privileges -> configura permissão para o usuário zabbix ter acesso a todas as tabelas do banco zabbix (zabbix.*) utilizando a senha zabbix_pw.
+
+Dar a carga inicial da base de dados do Zabbix
+
+# zcat /usr/share/doc/zabbix-server-mysql/create.sql.gz | mysql -uzabbix -p zabbix
+Será solicitado uma senha. Insira a senha informada na execução  do comando grant all privileges do passo anterior.
+Explicação:
+
+•	O comando zcat vai descompactar o arquivo create.sql.gz executando em seguida o mysql passando o usuário zabbix (-uzabbix), solicitando a senha (-p) e informando a base de dados (zabbix) que receberá as informações contidas no arquivo create.sql.gz.
+
+•	
+Se quiser conferir as tabelas que foram importadas para a base de dados do Zabbix, execute:
+
+# mysql -uzabbix -p zabbix -e "show tables"
+Será exibida uma saída similar a imagem abaixo:
+ 
+Obs.: a imagem completa foi omitida devido ao número de tabelas da base de dados do Zabbix. Fica como exercício você executar esse comando para visualizar todas as tabelas do Zabbix.
+
+Configurar a base de dados do Zabbix no arquivo de configuração
+
+Abra o arquivo /etc/zabbix/zabbix_server.conf
+
+# nano /etc/zabbix/zabbix_server.conf
+Procure DBPassword e insira a senha que você definiu na execução do comando create database. Para facilitar a busca, aperte CTRL + W e digite DBPassword.
+ 
+Se você criou a base de dados e o usuário usando outros nomes, altere os seguintes parâmetros:
+
+•	DBName
+•	DBUser
+
+Aperte CTRL + X e salve o arquivo.
+
+Configurar o PHP para o frontend do Zabbix
+
+Abra o arquivo /etc/zabbix/apache.conf
+# nano /etc/zabbix/apache.conf
+
+Procure a linha:
+1.	<IfModule mod_php7.c>
+
+Dentro do bloco abaixo da linha acima, descomente a seguinte linha:
+1.	# php_value date.timezone Europe/Riga
+
+Alterando para:
+1.	php_value date.timezone America/Sao_Paulo
+
+Aperte CTRL + X e salve o arquivo.
+
+Inicie os processos do Zabbix:
+# systemctl restart zabbix-server zabbix-agent apache2
+
+O comando restart garante que o serviço httpd será reiniciado para recarregar as configurações do PHP.
+
+Para garantir que os serviços iniciem quando o servidor for reiniciado, execute:
+# systemctl enable zabbix-server zabbix-agent apache2
+
+Configurar o frontend do Zabbix
+
+Localize o IP do seu servidor e acesse a interface web do Zabbix.
+Ex.: http://192.168.0.1/zabbix
+       
+Informe o usuário Admin e a senha zabbix.
+A instalação do Zabbix 4.4 está pronta para ser usada.
+
